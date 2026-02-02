@@ -25,7 +25,7 @@
                     <span>or</span>
                     <label class="file-input-label">
                         Browse files
-                        <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
+                        <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden>
                     </label>
                     <p class="supported-formats">Supports: JPEG, PNG, WebP, GIF (max 20MB)</p>
                 </div>
@@ -33,11 +33,14 @@
 
             <div id="loading" class="loading hidden">
                 <div class="spinner"></div>
-                <p>Processing image...</p>
+                <p id="loading-text">Processing image...</p>
+                <div id="progress-bar" class="progress-bar hidden">
+                    <div id="progress-fill" class="progress-fill"></div>
+                </div>
             </div>
 
             <div id="result" class="result hidden">
-                <div class="image-comparison">
+                <div id="single-result" class="image-comparison">
                     <div class="image-container">
                         <h3>Original</h3>
                         <img id="original-image" alt="Original image">
@@ -49,8 +52,13 @@
                         </div>
                     </div>
                 </div>
+                <div id="batch-result" class="batch-result hidden">
+                    <h3 id="batch-summary"></h3>
+                    <div id="batch-grid" class="batch-grid"></div>
+                </div>
                 <div class="actions">
                     <button id="download-btn" class="btn btn-primary">Download PNG</button>
+                    <button id="download-zip-btn" class="btn btn-primary hidden">Download All (ZIP)</button>
                     <button id="new-image-btn" class="btn btn-secondary">Process Another</button>
                 </div>
             </div>
@@ -66,6 +74,7 @@
         </footer>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="/js/app.js"></script>
 </body>
 </html>
