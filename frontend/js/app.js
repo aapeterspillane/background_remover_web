@@ -17,9 +17,14 @@ const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
 // State
 let processedBlob = null;
+let originalFileName = null;
 
 // Event Listeners
-dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('click', (e) => {
+    // Don't trigger if clicking on the label or input (they handle themselves)
+    if (e.target.closest('.file-input-label')) return;
+    fileInput.click();
+});
 fileInput.addEventListener('change', handleFileSelect);
 downloadBtn.addEventListener('click', downloadImage);
 newImageBtn.addEventListener('click', reset);
@@ -72,6 +77,11 @@ function handleFile(file) {
 async function processImage(file) {
     showLoading();
 
+    // Store original filename (without extension) for download
+    const nameParts = file.name.split('.');
+    nameParts.pop(); // Remove extension
+    originalFileName = nameParts.join('.') || 'image';
+
     // Show original image
     const originalUrl = URL.createObjectURL(file);
     originalImage.src = originalUrl;
@@ -106,7 +116,7 @@ function downloadImage() {
     const url = URL.createObjectURL(processedBlob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'background-removed.png';
+    a.download = `${originalFileName}.png`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -142,6 +152,7 @@ function reset() {
     error.classList.add('hidden');
     fileInput.value = '';
     processedBlob = null;
+    originalFileName = null;
 
     // Clean up object URLs
     if (originalImage.src) {
