@@ -69,8 +69,8 @@ pub fn run() {
         .run(|app, event| {
             if let tauri::RunEvent::Exit = event {
                 // Kill the backend sidecar on app exit
-                let state = app.state::<BackendChild>();
-                if let Some(child) = state.0.lock().unwrap().take() {
+                let child = app.state::<BackendChild>().0.lock().unwrap().take();
+                if let Some(child) = child {
                     let _ = child.kill();
                     println!("Backend sidecar killed");
                 }
