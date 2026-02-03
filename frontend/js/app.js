@@ -41,19 +41,30 @@ async function initializeApiBase() {
                 return;
             }
 
+            const dropZoneContent = dropZone.querySelector('.drop-zone-content p');
+            const originalText = dropZoneContent ? dropZoneContent.textContent : '';
+
             // Poll for backend port (with timeout)
-            const maxAttempts = 50; // 5 seconds max
+            // Windows needs longer: PyInstaller single-file EXE extracts ~250MB to temp dir first
+            const maxAttempts = 300; // 30 seconds max
             for (let i = 0; i < maxAttempts; i++) {
+                if (dropZoneContent && i > 10) {
+                    dropZoneContent.textContent = `Starting backend... ${Math.floor(i / 10)}s`;
+                }
                 const port = await invoke('get_backend_port');
                 if (port) {
                     API_BASE_URL = `http://127.0.0.1:${port}`;
                     console.log('Backend API URL:', API_BASE_URL);
 
                     // Now wait for backend to be actually ready (model loaded)
-                    await waitForBackendReady();
+                    await waitForBackendReady(dropZoneContent, originalText);
                     return;
                 }
                 await new Promise(resolve => setTimeout(resolve, 100));
+            }
+
+            if (dropZoneContent) {
+                dropZoneContent.textContent = originalText;
             }
             console.error('Timeout waiting for backend port');
         } catch (err) {
@@ -63,12 +74,14 @@ async function initializeApiBase() {
 }
 
 // Wait for backend health check to pass
-async function waitForBackendReady() {
+async function waitForBackendReady(dropZoneContent, originalText) {
     const maxAttempts = 600; // 60 seconds max (model loading can take a while)
 
-    // Show loading indicator on the drop zone
-    const dropZoneContent = dropZone.querySelector('.drop-zone-content p');
-    const originalText = dropZoneContent ? dropZoneContent.textContent : '';
+    // Get drop zone content element if not passed
+    if (!dropZoneContent) {
+        dropZoneContent = dropZone.querySelector('.drop-zone-content p');
+        originalText = dropZoneContent ? dropZoneContent.textContent : '';
+    }
 
     for (let i = 0; i < maxAttempts; i++) {
         try {
@@ -225,17 +238,26 @@ async function processOneImage(file) {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${API_BASE_URL}/api/process`, {
-        method: 'POST',
-        body: formData,
-    });
+    // 5 minute timeout for processing (large images + slow hardware)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 300000);
 
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Processing failed');
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/process`, {
+            method: 'POST',
+            body: formData,
+            signal: controller.signal,
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Processing failed');
+        }
+
+        return await response.blob();
+    } finally {
+        clearTimeout(timeoutId);
     }
-
-    return await response.blob();
 }
 
 function downloadSingleImage() {

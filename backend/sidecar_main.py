@@ -1,5 +1,6 @@
 """Sidecar entry point for Tauri desktop app."""
 
+import multiprocessing
 import os
 import signal
 import socket
@@ -26,6 +27,9 @@ def setup_bundled_model_path():
 
 def main():
     """Main entry point for the sidecar."""
+    # Required for PyInstaller on Windows
+    multiprocessing.freeze_support()
+
     import uvicorn
 
     # Set up bundled model path if running as frozen executable
