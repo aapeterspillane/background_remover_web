@@ -25,6 +25,7 @@ const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
 // API base URL - empty for web, set dynamically for Tauri
 let API_BASE_URL = '';
+let apiInitPromise = null;
 
 // State
 let processedResults = []; // Array of {name, blob}
@@ -47,6 +48,9 @@ async function initializeApiBase() {
                 if (port) {
                     API_BASE_URL = `http://127.0.0.1:${port}`;
                     console.log('Backend API URL:', API_BASE_URL);
+
+                    // Now wait for backend to be actually ready (model loaded)
+                    await waitForBackendReady();
                     return;
                 }
                 await new Promise(resolve => setTimeout(resolve, 100));
@@ -55,6 +59,50 @@ async function initializeApiBase() {
         } catch (err) {
             console.error('Failed to get backend port:', err);
         }
+    }
+}
+
+// Wait for backend health check to pass
+async function waitForBackendReady() {
+    const maxAttempts = 600; // 60 seconds max (model loading can take a while)
+
+    // Show loading indicator on the drop zone
+    const dropZoneContent = dropZone.querySelector('.drop-zone-content p');
+    const originalText = dropZoneContent ? dropZoneContent.textContent : '';
+
+    for (let i = 0; i < maxAttempts; i++) {
+        try {
+            if (dropZoneContent && i > 0) {
+                dropZoneContent.textContent = `Loading AI model... ${Math.floor(i / 10)}s`;
+            }
+
+            const response = await fetch(`${API_BASE_URL}/api/health`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.model_loaded) {
+                    console.log('Backend ready, model loaded');
+                    if (dropZoneContent) {
+                        dropZoneContent.textContent = originalText;
+                    }
+                    return;
+                }
+            }
+        } catch (err) {
+            // Backend not ready yet, continue polling
+        }
+        await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    if (dropZoneContent) {
+        dropZoneContent.textContent = originalText;
+    }
+    console.error('Timeout waiting for backend to be ready');
+}
+
+// Ensure API is initialized before processing
+async function ensureApiReady() {
+    if (apiInitPromise) {
+        await apiInitPromise;
     }
 }
 
@@ -121,6 +169,10 @@ function handleFiles(files) {
 
 async function processImages(files) {
     showLoading();
+
+    // Wait for API to be ready
+    await ensureApiReady();
+
     processedResults = [];
 
     const total = files.length;
@@ -320,4 +372,6 @@ function reset() {
 }
 
 // Initialize on page load
-document.addEventListener('DOMContentLoaded', initializeApiBase);
+document.addEventListener('DOMContentLoaded', () => {
+    apiInitPromise = initializeApiBase();
+});
