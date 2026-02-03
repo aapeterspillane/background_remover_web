@@ -23,3 +23,11 @@ build/
 
 # Local
 *.log
+
+# Node
+node_modules/
+
+# Tauri
+src-tauri/target/
+src-tauri/gen/
+src-tauri/binaries/

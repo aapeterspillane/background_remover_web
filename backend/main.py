@@ -34,11 +34,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS middleware - restrict origins in sidecar mode
-if IS_SIDECAR:
-    allowed_origins = ["tauri://localhost", "http://tauri.localhost"]
-else:
-    allowed_origins = ["*"]
+# CORS middleware - allow all origins since we only bind to localhost
+# In sidecar mode, only localhost can connect anyway
+allowed_origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -51,17 +49,18 @@ app.add_middleware(
 # Include API routes
 app.include_router(process.router)
 
-# Get the frontend directory path
-FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
+# Only serve static files when not running as sidecar
+# (Tauri serves the frontend directly)
+if not IS_SIDECAR:
+    # Get the frontend directory path
+    FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
 
+    # Mount static files
+    app.mount("/css", StaticFiles(directory=FRONTEND_DIR / "css"), name="css")
+    app.mount("/js", StaticFiles(directory=FRONTEND_DIR / "js"), name="js")
+    app.mount("/libs", StaticFiles(directory=FRONTEND_DIR / "libs"), name="libs")
 
-# Mount static files
-app.mount("/css", StaticFiles(directory=FRONTEND_DIR / "css"), name="css")
-app.mount("/js", StaticFiles(directory=FRONTEND_DIR / "js"), name="js")
-app.mount("/libs", StaticFiles(directory=FRONTEND_DIR / "libs"), name="libs")
-
-
-@app.get("/")
-async def root():
-    """Serve the main HTML page."""
-    return FileResponse(FRONTEND_DIR / "index.html")
+    @app.get("/")
+    async def root():
+        """Serve the main HTML page."""
+        return FileResponse(FRONTEND_DIR / "index.html")

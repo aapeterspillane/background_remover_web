@@ -34,10 +34,16 @@ async function initializeApiBase() {
     // Check if running in Tauri
     if (window.__TAURI__) {
         try {
+            const invoke = window.__TAURI__.core?.invoke || window.__TAURI__.tauri?.invoke || window.__TAURI__.invoke;
+            if (!invoke) {
+                console.error('Tauri invoke function not found');
+                return;
+            }
+
             // Poll for backend port (with timeout)
             const maxAttempts = 50; // 5 seconds max
             for (let i = 0; i < maxAttempts; i++) {
-                const port = await window.__TAURI__.core.invoke('get_backend_port');
+                const port = await invoke('get_backend_port');
                 if (port) {
                     API_BASE_URL = `http://127.0.0.1:${port}`;
                     console.log('Backend API URL:', API_BASE_URL);

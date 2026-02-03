@@ -4,6 +4,7 @@
 import os
 import sys
 from pathlib import Path
+from PyInstaller.utils.hooks import collect_submodules, copy_metadata
 
 block_cipher = None
 
@@ -16,6 +17,14 @@ u2net_model = u2net_home / "u2net.onnx"
 datas = []
 if u2net_model.exists():
     datas.append((str(u2net_model), 'u2net_models'))
+
+# Add package metadata for packages that use importlib.metadata
+datas += copy_metadata('pymatting')
+datas += copy_metadata('rembg')
+datas += copy_metadata('onnxruntime')
+
+# Collect all submodules for packages that have dynamic imports
+hiddenimports_extra = collect_submodules('pymatting')
 
 a = Analysis(
     ['backend/sidecar_main.py'],
@@ -58,7 +67,7 @@ a = Analysis(
         'backend.image_processor',
         'backend.utils',
         'backend.utils.file_handling',
-    ],
+    ] + hiddenimports_extra,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

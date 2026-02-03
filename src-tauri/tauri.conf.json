@@ -16,7 +16,8 @@
         "resizable": true,
         "center": true,
         "minWidth": 800,
-        "minHeight": 600
+        "minHeight": 600,
+        "dragDropEnabled": false
       }
     ],
     "security": {
@@ -37,15 +38,5 @@
       "binaries/backend"
     ]
   },
-  "plugins": {
-    "shell": {
-      "sidecar": true,
-      "scope": [
-        {
-          "name": "binaries/backend",
-          "sidecar": true
-        }
-      ]
-    }
-  }
+  "plugins": {}
 }
