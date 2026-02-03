@@ -30,6 +30,85 @@ let apiInitPromise = null;
 // State
 let processedResults = []; // Array of {name, blob}
 
+// Save a blob to disk with a "Save As" dialog.
+// Strategy: Tauri native dialog → File System Access API → anchor tag fallback
+async function saveBlob(blob, suggestedName, filters) {
+    // Tauri desktop: native OS save dialog
+    if (window.__TAURI__) {
+        try {
+            const tauriDialog = window.__TAURI__.dialog;
+            const tauriFs = window.__TAURI__.fs;
+
+            if (tauriDialog && tauriFs) {
+                const filePath = await tauriDialog.save({
+                    defaultPath: suggestedName,
+                    filters: filters,
+                });
+
+                if (!filePath) return; // User cancelled
+
+                const arrayBuffer = await blob.arrayBuffer();
+                const uint8Array = new Uint8Array(arrayBuffer);
+                await tauriFs.writeFile(filePath, uint8Array);
+                return;
+            }
+        } catch (err) {
+            console.error('Tauri save failed:', err);
+        }
+    }
+
+    // Web: File System Access API (Chrome/Edge)
+    if (typeof window.showSaveFilePicker === 'function') {
+        try {
+            const pickerTypes = filters.map(f => ({
+                description: f.name,
+                accept: extensionsToAccept(f.extensions),
+            }));
+
+            const fileHandle = await window.showSaveFilePicker({
+                suggestedName: suggestedName,
+                types: pickerTypes,
+            });
+
+            const writable = await fileHandle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+            return;
+        } catch (err) {
+            if (err.name === 'AbortError') return; // User cancelled
+            console.error('File System Access API failed:', err);
+        }
+    }
+
+    // Fallback: anchor tag download (Firefox/Safari)
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = suggestedName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function extensionsToAccept(extensions) {
+    const mimeMap = {
+        'png': 'image/png',
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'webp': 'image/webp',
+        'gif': 'image/gif',
+        'zip': 'application/zip',
+    };
+    const accept = {};
+    for (const ext of extensions) {
+        const mime = mimeMap[ext] || 'application/octet-stream';
+        if (!accept[mime]) accept[mime] = [];
+        accept[mime].push('.' + ext);
+    }
+    return accept;
+}
+
 // Initialize API base URL for Tauri
 async function initializeApiBase() {
     // Check if running in Tauri
@@ -260,18 +339,13 @@ async function processOneImage(file) {
     }
 }
 
-function downloadSingleImage() {
+async function downloadSingleImage() {
     if (processedResults.length === 0) return;
 
     const result = processedResults[0];
-    const url = URL.createObjectURL(result.blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = result.name;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    await saveBlob(result.blob, result.name, [
+        { name: 'PNG Image', extensions: ['png'] }
+    ]);
 }
 
 async function downloadAllAsZip() {
@@ -288,20 +362,15 @@ async function downloadAllAsZip() {
         }
 
         const content = await zip.generateAsync({ type: 'blob' });
-        const url = URL.createObjectURL(content);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'background-removed-images.zip';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        await saveBlob(content, 'background-removed-images.zip', [
+            { name: 'ZIP Archive', extensions: ['zip'] }
+        ]);
     } catch (err) {
         console.error('Failed to create ZIP:', err);
         alert('Failed to create ZIP file. Please try downloading images individually.');
     } finally {
         downloadZipBtn.disabled = false;
-        downloadZipBtn.textContent = 'Download All (ZIP)';
+        downloadZipBtn.textContent = 'Save All (ZIP)';
     }
 }
 

@@ -15,6 +15,8 @@ fn get_backend_port(state: tauri::State<BackendPort>) -> Option<u16> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .manage(BackendPort(Mutex::new(None)))
         .setup(|app| {
             let app_handle = app.handle().clone();
