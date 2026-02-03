@@ -8,15 +8,23 @@ from PyInstaller.utils.hooks import collect_submodules, copy_metadata
 
 block_cipher = None
 
-# Find the u2net model in the user's home directory
-home_dir = Path.home()
-u2net_home = home_dir / ".u2net"
-u2net_model = u2net_home / "u2net.onnx"
+# Find the u2net model - check multiple possible locations
+possible_model_paths = [
+    Path.home() / ".u2net" / "u2net.onnx",
+    Path(os.environ.get("U2NET_HOME", "")) / "u2net.onnx" if os.environ.get("U2NET_HOME") else None,
+    Path("/Users/runner/.u2net/u2net.onnx"),  # GitHub Actions macOS
+    Path("C:/Users/runneradmin/.u2net/u2net.onnx"),  # GitHub Actions Windows
+]
 
 # Collect model files if they exist
 datas = []
-if u2net_model.exists():
-    datas.append((str(u2net_model), 'u2net_models'))
+for model_path in possible_model_paths:
+    if model_path and model_path.exists():
+        print(f"Found u2net model at: {model_path}")
+        datas.append((str(model_path), 'u2net_models'))
+        break
+else:
+    print("WARNING: u2net model not found! The app will need to download it on first run.")
 
 # Add package metadata for packages that use importlib.metadata
 datas += copy_metadata('pymatting')

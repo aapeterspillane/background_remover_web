@@ -53,6 +53,10 @@ jobs:
         run: |
           python -c "from rembg import new_session; new_session('u2net')"
 
+      - name: Verify model downloaded
+        run: |
+          python -c "from pathlib import Path; p = Path.home() / '.u2net' / 'u2net.onnx'; print(f'Model exists: {p.exists()}, Size: {p.stat().st_size if p.exists() else 0} bytes, Path: {p}')"
+
       - name: Build Python sidecar (Unix)
         if: runner.os != 'Windows'
         run: |
