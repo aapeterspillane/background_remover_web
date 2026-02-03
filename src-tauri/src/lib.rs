@@ -1,10 +1,10 @@
 use std::sync::Mutex;
 use tauri::Manager;
 use tauri_plugin_shell::ShellExt;
-use tauri_plugin_shell::process::CommandEvent;
+use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 
-// Store the backend port globally
 struct BackendPort(Mutex<Option<u16>>);
+struct BackendChild(Mutex<Option<CommandChild>>);
 
 #[tauri::command]
 fn get_backend_port(state: tauri::State<BackendPort>) -> Option<u16> {
@@ -18,13 +18,17 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .manage(BackendPort(Mutex::new(None)))
+        .manage(BackendChild(Mutex::new(None)))
         .setup(|app| {
             let app_handle = app.handle().clone();
 
             // Spawn the backend sidecar
             let sidecar_command = app.shell().sidecar("backend").unwrap();
+            let (mut rx, child) = sidecar_command.spawn().expect("Failed to spawn sidecar");
 
-            let (mut rx, _child) = sidecar_command.spawn().expect("Failed to spawn sidecar");
+            // Store child handle so we can kill it on exit
+            let state = app.state::<BackendChild>();
+            *state.0.lock().unwrap() = Some(child);
 
             // Listen for output from sidecar to get the port
             let handle = app_handle.clone();
@@ -33,7 +37,6 @@ pub fn run() {
                     match event {
                         CommandEvent::Stdout(line) => {
                             let line_str = String::from_utf8_lossy(&line);
-                            // Parse port from "PORT:XXXX" format
                             if line_str.starts_with("PORT:") {
                                 if let Ok(port) = line_str.trim_start_matches("PORT:").trim().parse::<u16>() {
                                     let state = handle.state::<BackendPort>();
@@ -61,6 +64,16 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![get_backend_port])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            if let tauri::RunEvent::Exit = event {
+                // Kill the backend sidecar on app exit
+                let state = app.state::<BackendChild>();
+                if let Some(child) = state.0.lock().unwrap().take() {
+                    let _ = child.kill();
+                    println!("Backend sidecar killed");
+                }
+            }
+        });
 }
