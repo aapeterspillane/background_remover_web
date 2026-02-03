@@ -21,8 +21,22 @@ def setup_bundled_model_path():
         # Running as PyInstaller bundle
         bundle_dir = sys._MEIPASS
         model_dir = os.path.join(bundle_dir, 'u2net_models')
+
+        print(f"DEBUG: Bundle dir: {bundle_dir}", flush=True)
+        print(f"DEBUG: Model dir: {model_dir}", flush=True)
+        print(f"DEBUG: Model dir exists: {os.path.exists(model_dir)}", flush=True)
+
         if os.path.exists(model_dir):
+            # List contents of model dir
+            contents = os.listdir(model_dir)
+            print(f"DEBUG: Model dir contents: {contents}", flush=True)
             os.environ['U2NET_HOME'] = model_dir
+            print(f"DEBUG: Set U2NET_HOME to: {model_dir}", flush=True)
+        else:
+            print(f"DEBUG: Model dir does not exist!", flush=True)
+            # List bundle dir contents to see what's there
+            if os.path.exists(bundle_dir):
+                print(f"DEBUG: Bundle dir contents: {os.listdir(bundle_dir)[:20]}...", flush=True)
 
 
 def main():

@@ -61,6 +61,10 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           pyinstaller backend.spec --noconfirm --clean
+          echo "=== Checking PyInstaller build output ==="
+          ls -la dist/
+          echo "=== Testing sidecar starts ==="
+          timeout 10 ./dist/backend || true
           mkdir -p src-tauri/binaries
           cp dist/backend "src-tauri/binaries/backend-${{ matrix.target }}"
 
