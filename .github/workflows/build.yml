@@ -18,9 +18,6 @@ jobs:
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
             name: Windows-x64
-          - platform: windows-11-arm64
-            target: aarch64-pc-windows-msvc
-            name: Windows-arm64
 
     runs-on: ${{ matrix.platform }}
 
