@@ -63,8 +63,12 @@ jobs:
           pyinstaller backend.spec --noconfirm --clean
           echo "=== Checking PyInstaller build output ==="
           ls -la dist/
-          echo "=== Testing sidecar starts ==="
-          timeout 10 ./dist/backend || true
+          echo "=== Testing sidecar briefly (5 sec) ==="
+          ./dist/backend &
+          BACKEND_PID=$!
+          sleep 5
+          kill $BACKEND_PID 2>/dev/null || true
+          echo "=== Sidecar test complete ==="
           mkdir -p src-tauri/binaries
           cp dist/backend "src-tauri/binaries/backend-${{ matrix.target }}"
 
