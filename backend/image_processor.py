@@ -1,10 +1,22 @@
 """Image processing module using rembg for background removal."""
 
+import os
+import sys
 from io import BytesIO
 from pathlib import Path
 
 from PIL import Image
 from rembg import remove, new_session
+
+
+def _setup_bundled_model():
+    """Configure model path for PyInstaller bundled executable."""
+    if getattr(sys, 'frozen', False):
+        # Running as PyInstaller bundle
+        bundle_dir = sys._MEIPASS
+        model_dir = os.path.join(bundle_dir, 'u2net_models')
+        if os.path.exists(model_dir):
+            os.environ['U2NET_HOME'] = model_dir
 
 
 class ImageProcessor:
@@ -14,6 +26,8 @@ class ImageProcessor:
 
     def __init__(self):
         """Initialize the processor and load the model."""
+        # Set up bundled model path if running as frozen executable
+        _setup_bundled_model()
         # Create session to cache the model (176MB download on first run)
         self._session = new_session("u2net")
         self._model_loaded = True

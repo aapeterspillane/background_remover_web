@@ -1,0 +1,51 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Background Remover",
+  "version": "1.0.0",
+  "identifier": "com.backgroundremover.app",
+  "build": {
+    "frontendDist": "../frontend"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "Background Remover",
+        "width": 1200,
+        "height": 800,
+        "resizable": true,
+        "center": true,
+        "minWidth": 800,
+        "minHeight": 600
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' blob: data:; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://127.0.0.1:*"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "externalBin": [
+      "binaries/backend"
+    ]
+  },
+  "plugins": {
+    "shell": {
+      "sidecar": true,
+      "scope": [
+        {
+          "name": "binaries/backend",
+          "sidecar": true
+        }
+      ]
+    }
+  }
+}

@@ -23,8 +23,34 @@ const retryBtn = document.getElementById('retry-btn');
 const SUPPORTED_FORMATS = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
+// API base URL - empty for web, set dynamically for Tauri
+let API_BASE_URL = '';
+
 // State
 let processedResults = []; // Array of {name, blob}
+
+// Initialize API base URL for Tauri
+async function initializeApiBase() {
+    // Check if running in Tauri
+    if (window.__TAURI__) {
+        try {
+            // Poll for backend port (with timeout)
+            const maxAttempts = 50; // 5 seconds max
+            for (let i = 0; i < maxAttempts; i++) {
+                const port = await window.__TAURI__.core.invoke('get_backend_port');
+                if (port) {
+                    API_BASE_URL = `http://127.0.0.1:${port}`;
+                    console.log('Backend API URL:', API_BASE_URL);
+                    return;
+                }
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            console.error('Timeout waiting for backend port');
+        } catch (err) {
+            console.error('Failed to get backend port:', err);
+        }
+    }
+}
 
 // Event Listeners
 dropZone.addEventListener('click', (e) => {
@@ -141,7 +167,7 @@ async function processOneImage(file) {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch('/api/process', {
+    const response = await fetch(`${API_BASE_URL}/api/process`, {
         method: 'POST',
         body: formData,
     });
@@ -286,3 +312,6 @@ function reset() {
     originalImage.src = '';
     processedImage.src = '';
 }
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', initializeApiBase);

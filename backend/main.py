@@ -1,5 +1,6 @@
 """FastAPI application for background removal."""
 
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -10,6 +11,10 @@ from fastapi.responses import FileResponse
 
 from backend.image_processor import ImageProcessor
 from backend.routes import process
+
+
+# Check if running as Tauri sidecar
+IS_SIDECAR = os.environ.get("SIDECAR_MODE") == "1"
 
 
 @asynccontextmanager
@@ -29,10 +34,15 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS middleware for development
+# CORS middleware - restrict origins in sidecar mode
+if IS_SIDECAR:
+    allowed_origins = ["tauri://localhost", "http://tauri.localhost"]
+else:
+    allowed_origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -48,6 +58,7 @@ FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
 # Mount static files
 app.mount("/css", StaticFiles(directory=FRONTEND_DIR / "css"), name="css")
 app.mount("/js", StaticFiles(directory=FRONTEND_DIR / "js"), name="js")
+app.mount("/libs", StaticFiles(directory=FRONTEND_DIR / "libs"), name="libs")
 
 
 @app.get("/")
