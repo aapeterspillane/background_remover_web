@@ -71,8 +71,33 @@ pub fn run() {
                 // Kill the backend sidecar on app exit
                 let child = app.state::<BackendChild>().0.lock().unwrap().take();
                 if let Some(child) = child {
+                    let pid = child.pid();
+                    let pid_str = pid.to_string();
+
+                    // Kill the entire process tree, not just the sidecar process.
+                    // The sidecar may spawn child processes (e.g. ONNX Runtime,
+                    // PyInstaller bootloader on macOS) that would otherwise be
+                    // orphaned since a plain kill only targets the direct process.
+                    #[cfg(windows)]
+                    {
+                        let _ = std::process::Command::new("taskkill")
+                            .args(["/F", "/T", "/PID", &pid_str])
+                            .status();
+                    }
+
+                    #[cfg(unix)]
+                    {
+                        let _ = std::process::Command::new("kill")
+                            .args(["-TERM", &pid_str])
+                            .status();
+                        let _ = std::process::Command::new("pkill")
+                            .args(["-TERM", "-P", &pid_str])
+                            .status();
+                        std::thread::sleep(std::time::Duration::from_millis(500));
+                    }
+
                     let _ = child.kill();
-                    println!("Backend sidecar killed");
+                    println!("Backend sidecar killed (pid: {})", pid);
                 }
             }
         });
