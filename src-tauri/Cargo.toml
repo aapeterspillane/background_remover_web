@@ -1,6 +1,6 @@
 [package]
 name = "background-remover"
-version = "1.0.0"
+version = "1.1.0"
 description = "Background Remover Desktop App"
 authors = [""]
 edition = "2021"
